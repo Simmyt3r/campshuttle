@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return userDoc().data.role;
+    }
+
+    function isDriver() {
+      return signedIn() && userRole() == 'driver';
+    }
+
+    function isStudent() {
+      return signedIn() && userRole() == 'student';
+    }
+
+    function shuttle(shuttleId) {
+      return get(/databases/$(database)/documents/shuttles/$(shuttleId));
+    }
+
+    function isAvailableShuttle(resourceData) {
+      return resourceData.isVisible == true && resourceData.availableSeats > 0;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role in ['student', 'driver'];
+      allow read: if isOwner(userId) || isDriver();
+      allow update: if isOwner(userId)
+        && !('role' in request.resource.data.diff(resource.data).changedKeys());
+    }
+
+    match /shuttles/{shuttleId} {
+      allow read: if signedIn()
+        && (
+          (isDriver() && resource.data.driverId == request.auth.uid) ||
+          (isStudent() && isAvailableShuttle(resource.data))
+        );
+      allow create: if isDriver()
+        && shuttleId == request.auth.uid
+        && request.resource.data.shuttleId == shuttleId
+        && request.resource.data.driverId == request.auth.uid
+        && request.resource.data.availableSeats <= request.resource.data.totalSeats
+        && request.resource.data.availableSeats >= 0
+        && request.resource.data.isVisible == (request.resource.data.availableSeats > 0 && request.resource.data.isVisible == true);
+      allow update: if isDriver()
+        && resource.data.driverId == request.auth.uid
+        && request.resource.data.driverId == request.auth.uid
+        && request.resource.data.shuttleId == resource.data.shuttleId
+        && request.resource.data.availableSeats <= request.resource.data.totalSeats
+        && request.resource.data.availableSeats >= 0;
+      allow delete: if isDriver() && resource.data.driverId == request.auth.uid;
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if signedIn()
+        && (
+          resource.data.studentId == request.auth.uid ||
+          resource.data.driverId == request.auth.uid
+        );
+      allow create: if isStudent()
+        && request.resource.data.bookingId == bookingId
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && shuttle(request.resource.data.shuttleId).data.driverId == request.resource.data.driverId
+        && isAvailableShuttle(shuttle(request.resource.data.shuttleId).data);
+      allow update: if isDriver()
+        && resource.data.driverId == request.auth.uid
+        && request.resource.data.driverId == resource.data.driverId
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.shuttleId == resource.data.shuttleId
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['accepted', 'declined'];
+      allow delete: if isDriver()
+        && resource.data.driverId == request.auth.uid
+        && resource.data.status == 'pending';
+    }
+  }
+}
