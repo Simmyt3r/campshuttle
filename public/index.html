@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f766e" />
+    <title>Campus Shuttle Availability System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQPLNRErBLnTLMq1k6Q8z98t7U0AO/g=" crossorigin="" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#home" aria-label="Campus Shuttle Availability home">
+          <span class="brand__icon">CS</span>
+          <span>
+            <strong>Campus Shuttle</strong>
+            <small>Availability System</small>
+          </span>
+        </a>
+        <nav class="nav-actions" aria-label="Primary navigation">
+          <a href="#home">Home</a>
+          <a href="#student-dashboard" data-auth-link="student">Student</a>
+          <a href="#driver-dashboard" data-auth-link="driver">Driver</a>
+          <button class="btn btn--ghost hidden" id="logoutBtn" type="button">Logout</button>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero page" id="homePage" data-page="home">
+          <div class="hero__content">
+            <span class="eyebrow">Seat-aware smart campus transport</span>
+            <h1>Show students only shuttles that can actually pick them up.</h1>
+            <p>
+              A Firebase-powered real-time shuttle availability platform with live geolocation,
+              seat-aware visibility, booking requests, and driver-controlled online status.
+            </p>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#auth">Get started</a>
+              <a class="btn btn--secondary" href="#live-map">View live map</a>
+            </div>
+            <div class="hero__stats" aria-label="System highlights">
+              <article><strong>Live</strong><span>Firestore listeners</span></article>
+              <article><strong>Seat-aware</strong><span>Full shuttles auto-hide</span></article>
+              <article><strong>Mobile</strong><span>Responsive dashboards</span></article>
+            </div>
+          </div>
+          <div class="hero__panel glass-card">
+            <div class="phone-preview">
+              <div class="phone-preview__top"></div>
+              <div class="mini-map"></div>
+              <div class="route-card">
+                <span class="status-dot"></span>
+                <div>
+                  <strong>North Campus Loop</strong>
+                  <small>5 seats available • accepting passengers</small>
+                </div>
+              </div>
+              <div class="route-card muted">
+                <span class="status-dot status-dot--warning"></span>
+                <div>
+                  <strong>Library Express</strong>
+                  <small>Hidden when full or offline</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="page auth-layout hidden" id="authPage" data-page="auth">
+          <div class="section-heading">
+            <span class="eyebrow">Firebase Authentication</span>
+            <h2>Login or create an account</h2>
+            <p>Select your role during registration. Roles are stored in the users collection.</p>
+          </div>
+
+          <div class="auth-grid">
+            <form class="card form-card" id="loginForm">
+              <h3>Login</h3>
+              <label>Email<input id="loginEmail" type="email" autocomplete="email" required /></label>
+              <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+              <button class="btn btn--primary" type="submit">Login</button>
+            </form>
+
+            <form class="card form-card" id="registerForm">
+              <h3>Register</h3>
+              <label>Full name<input id="registerName" type="text" autocomplete="name" required /></label>
+              <label>Email<input id="registerEmail" type="email" autocomplete="email" required /></label>
+              <label>Password<input id="registerPassword" type="password" autocomplete="new-password" minlength="6" required /></label>
+              <label>Role<select id="registerRole" required><option value="student">Student</option><option value="driver">Driver</option></select></label>
+              <button class="btn btn--secondary" type="submit">Create account</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="page dashboard hidden" id="studentPage" data-page="student-dashboard">
+          <div class="dashboard__header">
+            <div>
+              <span class="eyebrow">Student dashboard</span>
+              <h2>Available shuttles near you</h2>
+              <p>Only visible, online shuttles with available seats appear here.</p>
+            </div>
+            <button class="btn btn--secondary" id="locateStudentBtn" type="button">Use my location</button>
+          </div>
+
+          <div class="dashboard-grid dashboard-grid--student">
+            <aside class="card sidebar-card">
+              <div class="card__header"><h3>Active shuttles</h3><span id="activeShuttleCount" class="pill">0 live</span></div>
+              <div id="studentConnection" class="connection-banner">Connecting to live availability…</div>
+              <div class="list" id="shuttleList"></div>
+            </aside>
+
+            <section class="card map-card" id="live-map">
+              <div class="card__header"><h3>Live seat-aware map</h3><span class="pill pill--green">available seats only</span></div>
+              <div class="map" id="studentMap" role="application" aria-label="Live shuttle map"></div>
+            </section>
+
+            <aside class="card sidebar-card">
+              <div class="card__header"><h3>Booking status</h3><span class="pill">real-time</span></div>
+              <div class="list" id="bookingList"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page dashboard hidden" id="driverPage" data-page="driver-dashboard">
+          <div class="dashboard__header">
+            <div>
+              <span class="eyebrow">Driver dashboard</span>
+              <h2>Control shuttle availability</h2>
+              <p>Go online to broadcast location and accept seat requests.</p>
+            </div>
+            <div class="driver-actions">
+              <button class="btn btn--primary" id="toggleOnlineBtn" type="button">Go Online</button>
+              <button class="btn btn--danger" id="endTripBtn" type="button">End Trip</button>
+            </div>
+          </div>
+
+          <div class="dashboard-grid dashboard-grid--driver">
+            <section class="card form-card">
+              <div class="card__header"><h3>Shuttle setup</h3><span id="driverStatusPill" class="pill">offline</span></div>
+              <label>Route<input id="driverRoute" type="text" placeholder="North Campus Loop" /></label>
+              <label>Total seats<input id="totalSeats" type="number" min="1" max="80" value="14" /></label>
+              <label>Available seats<input id="availableSeats" type="number" min="0" max="80" value="14" /></label>
+              <button class="btn btn--secondary" id="saveShuttleBtn" type="button">Save shuttle</button>
+              <div class="metrics">
+                <article><span>Available</span><strong id="metricSeats">0</strong></article>
+                <article><span>Passengers</span><strong id="metricPassengers">0</strong></article>
+                <article><span>Visibility</span><strong id="metricVisible">Hidden</strong></article>
+              </div>
+              <p class="hint">If seats reach 0, the app automatically hides the shuttle from students.</p>
+            </section>
+
+            <section class="card map-card">
+              <div class="card__header"><h3>Driver live location</h3><span class="pill pill--green" id="locationStatus">waiting</span></div>
+              <div class="map" id="driverMap" role="application" aria-label="Driver location map"></div>
+            </section>
+
+            <aside class="card sidebar-card">
+              <div class="card__header"><h3>Incoming requests</h3><span id="requestCount" class="pill">0 pending</span></div>
+              <div class="list" id="requestList"></div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="modal" id="shuttleModal">
+      <div class="modal__content">
+        <button class="modal__close" id="closeModalBtn" type="button" aria-label="Close shuttle details">×</button>
+        <div id="modalBody"></div>
+      </div>
+    </dialog>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
