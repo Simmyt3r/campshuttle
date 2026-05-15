@@ -1,6 +1,6 @@
 # Campus Shuttle Availability System
 
-A modern Firebase web application for reducing student waiting uncertainty by showing **only active shuttles with available seats**. The app supports student and driver roles, live seat requests, driver-controlled availability, and real-time geolocation tracking.
+A modern Firebase web application for reducing student waiting uncertainty by showing **only active shuttles with available seats**. The app supports student and driver roles, live seat requests, driver-controlled availability, real-time geolocation tracking, and Firebase Analytics.
 
 ## Core concept
 
@@ -17,24 +17,188 @@ Drivers control visibility by going online/offline. When available seats reach z
 - HTML5, CSS3, and modular vanilla JavaScript
 - Firebase Authentication
 - Firebase Firestore with real-time listeners and offline persistence
-- Firebase Hosting
+- Firebase Analytics
+- Firebase Hosting on the free Spark plan
 - Leaflet with OpenStreetMap tiles
 - HTML5 Geolocation API using `navigator.geolocation.watchPosition()`
 
-## Firebase setup
+## Firebase project already configured
 
-1. Create a Firebase project.
-2. Enable **Authentication → Email/Password**.
-3. Create a **Cloud Firestore** database.
-4. Register a web app in Firebase.
-5. Replace the placeholder values in `public/js/firebase-config.js` with your web app config.
-6. Deploy Firestore rules, composite indexes, and Hosting:
+This repository is configured for your Firebase web app:
+
+| Setting | Value |
+| --- | --- |
+| Firebase project ID | `compshuttle` |
+| Auth domain | `compshuttle.firebaseapp.com` |
+| Storage bucket | `compshuttle.firebasestorage.app` |
+| Measurement ID | `G-5WCLN8X2ST` |
+| Hosting public directory | `public` |
+
+The Firebase config lives in `public/js/firebase-config.js`, and `.firebaserc` points deployments to the `compshuttle` project.
+
+> Firebase web API keys are intentionally included in client-side web apps. Protect your app data with Firebase Authentication, Firestore Security Rules, and authorized domains.
+
+## First-time Firebase setup checklist
+
+Do these once in the [Firebase Console](https://console.firebase.google.com/):
+
+1. Open project **compshuttle**.
+2. Go to **Build → Authentication → Get started**.
+3. Open **Sign-in method** and enable **Email/Password**.
+4. Go to **Build → Firestore Database → Create database**.
+5. Choose **Production mode**.
+6. Pick a nearby Firestore location. You cannot easily change this later.
+7. Go to **Project settings → General → Your apps** and confirm the web app config matches `public/js/firebase-config.js`.
+8. Stay on the free **Spark** plan unless Firebase asks you to upgrade for a feature you intentionally add later. This app only needs free Firebase Hosting, Authentication, Firestore, and Analytics features for normal student-project usage.
+
+## Run locally before deployment
+
+Because the app uses JavaScript modules, serve the `public` directory instead of opening `index.html` directly:
+
+```bash
+python3 -m http.server 4173 --directory public
+```
+
+Open <http://localhost:4173>.
+
+For local testing:
+
+1. Register one account with role **Driver**.
+2. Register another account with role **Student**. Use another browser, incognito window, or separate browser profile.
+3. In the driver dashboard, enter a route and seat count, then click **Save shuttle**.
+4. Click **Go Online** and allow location access.
+5. In the student dashboard, confirm the shuttle appears only while it is online and has available seats.
+
+## Free Firebase Hosting deployment guide
+
+Firebase Hosting has a free Spark-plan tier that is suitable for this static app. You do **not** need a paid server, VPS, backend hosting plan, or custom domain.
+
+### 1. Install the Firebase CLI
+
+If Node.js is not installed, install the current LTS version from <https://nodejs.org/> first. Then install the Firebase CLI globally:
+
+```bash
+npm install -g firebase-tools
+```
+
+Check it installed correctly:
+
+```bash
+firebase --version
+```
+
+### 2. Log in to Firebase
+
+```bash
+firebase login
+```
+
+A browser window opens. Sign in with the same Google account that owns the **compshuttle** Firebase project.
+
+If you are on a shared computer, log out when done:
+
+```bash
+firebase logout
+```
+
+### 3. Confirm the project target
+
+This repo already contains `.firebaserc`, so the default project should be `compshuttle`.
+
+```bash
+firebase use
+```
+
+If it does not show `compshuttle`, run:
+
+```bash
+firebase use compshuttle
+```
+
+### 4. Deploy Firestore rules, indexes, and Hosting
+
+From the repository root, run:
 
 ```bash
 firebase deploy --only firestore:rules,firestore:indexes,hosting
 ```
 
-Update `.firebaserc` with your actual Firebase project id before deployment.
+This publishes:
+
+- `firestore.rules` to protect student, driver, shuttle, and booking data.
+- `firestore.indexes.json` so the live dashboard queries work efficiently.
+- The `public` folder to Firebase Hosting.
+
+### 5. Open your deployed app
+
+After deployment, Firebase prints a **Hosting URL** similar to:
+
+```text
+https://compshuttle.web.app
+https://compshuttle.firebaseapp.com
+```
+
+Open the URL in your browser and test with driver and student accounts.
+
+### 6. Deploy only the website after future UI changes
+
+If you only change HTML, CSS, or JavaScript files in `public`, deploy just Hosting:
+
+```bash
+firebase deploy --only hosting
+```
+
+If you change Firestore rules or indexes, use the full deploy command again:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,hosting
+```
+
+## Common deployment problems
+
+### `Error: Failed to authenticate`
+
+Run:
+
+```bash
+firebase logout
+firebase login
+```
+
+Then deploy again.
+
+### `Error: Project not found or permission denied`
+
+Make sure you are logged in with a Google account that has access to the Firebase project `compshuttle`:
+
+```bash
+firebase login:list
+firebase use compshuttle
+```
+
+### The app loads but login/register fails
+
+Check these items in Firebase Console:
+
+- **Authentication → Sign-in method → Email/Password** is enabled.
+- **Firestore Database** has been created.
+- You deployed the rules with `firebase deploy --only firestore:rules`.
+- Your deployed domain appears in **Authentication → Settings → Authorized domains**. Firebase Hosting domains are usually added automatically.
+
+### Students cannot see shuttles
+
+Confirm that the driver account has:
+
+- Saved a shuttle.
+- Clicked **Go Online**.
+- Allowed browser location access.
+- Set `availableSeats` above `0`.
+
+Students only see shuttles where `isVisible == true` and `availableSeats > 0`.
+
+### Location does not update
+
+Browser geolocation normally requires HTTPS. Firebase Hosting provides HTTPS automatically, so test location on the deployed Firebase URL rather than a plain `http://` LAN address.
 
 ## Collections
 
@@ -69,16 +233,6 @@ Update `.firebaserc` with your actual Firebase project id before deployment.
 - `route`
 - `status` (`pending`, `accepted`, `declined`)
 - `createdAt`
-
-## Run locally
-
-Because the app uses JavaScript modules, serve the `public` directory instead of opening `index.html` directly:
-
-```bash
-python3 -m http.server 4173 --directory public
-```
-
-Open <http://localhost:4173>.
 
 ## Feature checklist
 

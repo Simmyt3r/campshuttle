@@ -1,10 +1,11 @@
-// Replace these placeholder values with your Firebase web app configuration.
 // Firebase Console → Project settings → General → Your apps → Web app config.
+// This app is connected to the free Spark-plan Firebase project named `compshuttle`.
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDUp_k57_EcUAR6HhkWff5TIVaJilVr-9E",
+  authDomain: "compshuttle.firebaseapp.com",
+  projectId: "compshuttle",
+  storageBucket: "compshuttle.firebasestorage.app",
+  messagingSenderId: "416324921755",
+  appId: "1:416324921755:web:f5717e18f5ae0b5341d93e",
+  measurementId: "G-5WCLN8X2ST"
 };
