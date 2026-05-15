@@ -1,5 +1,4 @@
-// Firebase Console → Project settings → General → Your apps → Web app config.
-// This app is connected to the free Spark-plan Firebase project named `compshuttle`.
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional.
 export const firebaseConfig = {
   apiKey: "AIzaSyDUp_k57_EcUAR6HhkWff5TIVaJilVr-9E",
   authDomain: "compshuttle.firebaseapp.com",
