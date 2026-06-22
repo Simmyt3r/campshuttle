@@ -27,6 +27,7 @@ export function initDriverUi() {
   $("#saveShuttleBtn").addEventListener("click", saveShuttle);
   $("#toggleOnlineBtn").addEventListener("click", toggleOnline);
   $("#endTripBtn").addEventListener("click", endTrip);
+  $("#simulateRouteBtn").addEventListener("click", toggleSimulatedRoute);
 }
 
 export function startDriverDashboard() {
@@ -41,6 +42,15 @@ export function stopLocationWatch() {
     state.locationWatchId = null;
   }
 }
+
+const DEMO_ROUTE = [
+  [40.7128, -74.0060],
+  [40.7138, -74.0047],
+  [40.7150, -74.0054],
+  [40.7143, -74.0072],
+  [40.7129, -74.0081],
+  [40.7118, -74.0070]
+];
 
 function driverShuttleId() {
   return state.user.uid;
@@ -122,12 +132,15 @@ async function toggleOnline() {
     toast("You are online and visible to students with available seats.", "success");
   } else {
     stopLocationWatch();
+    stopSimulatedRoute();
+    await clearPendingRequests("Driver went offline");
     $("#locationStatus").textContent = "paused";
-    toast("You are offline. Students can no longer see this shuttle.", "success");
+    toast("You are offline. Pending requests were declined and students can no longer see this shuttle.", "success");
   }
 }
 
 function startLocationBroadcast() {
+  stopSimulatedRoute();
   if (!navigator.geolocation) {
     toast("Geolocation is not supported by this browser.", "error");
     return;
@@ -237,8 +250,65 @@ async function respondToRequest(bookingId, accepted) {
   }
 }
 
+function stopSimulatedRoute() {
+  if (state.simulatedRouteTimerId !== null) {
+    window.clearInterval(state.simulatedRouteTimerId);
+    state.simulatedRouteTimerId = null;
+  }
+}
+
+async function publishSimulatedLocation() {
+  if (!state.driverShuttle) await saveShuttle();
+  const [latitude, longitude] = DEMO_ROUTE[state.simulatedRouteStep % DEMO_ROUTE.length];
+  state.simulatedRouteStep += 1;
+  updateDriverMarker(latitude, longitude);
+  await updateDoc(doc(db, "shuttles", driverShuttleId()), {
+    latitude,
+    longitude,
+    isVisible: Number.parseInt($("#availableSeats").value, 10) > 0,
+    updatedAt: serverTimestamp()
+  });
+}
+
+async function toggleSimulatedRoute() {
+  if (state.simulatedRouteTimerId !== null) {
+    stopSimulatedRoute();
+    $("#simulateRouteBtn").textContent = "Simulate Route";
+    $("#locationStatus").textContent = state.locationWatchId === null ? "paused" : "tracking";
+    toast("Simulated route stopped.", "warning");
+    return;
+  }
+
+  stopLocationWatch();
+  state.simulatedRouteStep = 0;
+  await publishSimulatedLocation();
+  state.simulatedRouteTimerId = window.setInterval(() => {
+    publishSimulatedLocation().catch((error) => toast(error.message, "error"));
+  }, 2500);
+  $("#simulateRouteBtn").textContent = "Stop Simulation";
+  $("#locationStatus").textContent = "simulating";
+  toast("Mock shuttle route is broadcasting for demo mode.", "success");
+}
+
+async function clearPendingRequests(reason) {
+  const pendingRequests = await getDocs(query(collection(db, "bookings"), where("driverId", "==", state.user.uid), where("status", "==", "pending")));
+  if (pendingRequests.empty) return 0;
+
+  const batch = writeBatch(db);
+  pendingRequests.forEach((request) => {
+    batch.update(doc(db, "bookings", request.id), {
+      status: "declined",
+      responseNote: reason,
+      respondedAt: serverTimestamp()
+    });
+  });
+  await batch.commit();
+  return pendingRequests.size;
+}
+
 async function endTrip() {
   stopLocationWatch();
+  stopSimulatedRoute();
   const shuttleRef = doc(db, "shuttles", driverShuttleId());
   const totalSeats = Number.parseInt($("#totalSeats").value, 10) || state.driverShuttle?.totalSeats || 0;
   await updateDoc(shuttleRef, {
@@ -247,10 +317,8 @@ async function endTrip() {
     updatedAt: serverTimestamp()
   });
 
-  const pendingRequests = await getDocs(query(collection(db, "bookings"), where("driverId", "==", state.user.uid), where("status", "==", "pending")));
-  const batch = writeBatch(db);
-  pendingRequests.forEach((request) => batch.delete(doc(db, "bookings", request.id)));
-  await batch.commit();
+  const declinedCount = await clearPendingRequests("Trip ended");
+  $("#simulateRouteBtn").textContent = "Simulate Route";
   $("#locationStatus").textContent = "trip ended";
-  toast("Trip ended, requests cleared, and shuttle hidden.", "success");
+  toast(`Trip ended, ${declinedCount} pending request${declinedCount === 1 ? "" : "s"} declined, and shuttle hidden.`, "success");
 }
