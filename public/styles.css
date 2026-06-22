@@ -114,6 +114,9 @@ p { color: var(--muted); line-height: 1.7; }
 .btn--secondary { color: #063f3b; background: #ccfbf1; }
 .btn--ghost { color: var(--primary); background: rgba(15, 118, 110, 0.08); }
 .btn--danger { color: white; background: var(--danger); }
+.btn--tiny { padding: 0.45rem 0.7rem; font-size: 0.72rem; }
+.simulate-route-btn { margin-top: 0.65rem; opacity: 0.68; }
+.simulate-route-btn:hover { opacity: 1; }
 
 .hero__stats, .metrics {
   display: grid;

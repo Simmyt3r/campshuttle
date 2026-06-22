@@ -2,12 +2,12 @@ import {
   db,
   collection,
   doc,
-  setDoc,
   query,
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 } from "./firebase.js";
 import { state, rememberUnsubscribe, cacheShuttles, loadCachedShuttles } from "./state.js";
 import { $, escapeHtml, formatTime, renderEmpty, statusLabel, toast } from "./ui.js";
@@ -131,21 +131,43 @@ async function requestSeat() {
     return;
   }
 
+  const requestButton = $("#requestSeatBtn");
+  requestButton.disabled = true;
+  requestButton.textContent = "Checking seats…";
+
   try {
     const bookingRef = doc(collection(db, "bookings"));
-    await setDoc(bookingRef, {
-      bookingId: bookingRef.id,
-      shuttleId: shuttle.id,
-      driverId: shuttle.driverId,
-      studentId: state.user.uid,
-      studentName: state.userProfile.fullName,
-      route: shuttle.route,
-      status: "pending",
-      createdAt: serverTimestamp()
+    const shuttleRef = doc(db, "shuttles", shuttle.id);
+
+    await runTransaction(db, async (transaction) => {
+      const shuttleSnap = await transaction.get(shuttleRef);
+      if (!shuttleSnap.exists()) {
+        throw new Error("This shuttle is no longer available.");
+      }
+
+      const liveShuttle = shuttleSnap.data();
+      if (liveShuttle.isVisible !== true || liveShuttle.availableSeats <= 0) {
+        throw new Error("Sorry, the last seat was just taken. Please choose another shuttle.");
+      }
+
+      transaction.set(bookingRef, {
+        bookingId: bookingRef.id,
+        shuttleId: shuttle.id,
+        driverId: liveShuttle.driverId,
+        studentId: state.user.uid,
+        studentName: state.userProfile.fullName,
+        route: liveShuttle.route,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
     });
+
     $("#shuttleModal").close();
     toast("Seat request sent to driver.", "success");
   } catch (error) {
-    toast(error.message, "error");
+    toast(error.message, "warning");
+  } finally {
+    requestButton.disabled = false;
+    requestButton.textContent = "Request Seat";
   }
 }

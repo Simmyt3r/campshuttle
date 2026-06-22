@@ -9,6 +9,8 @@ export const state = {
   selectedShuttle: null,
   driverShuttle: null,
   locationWatchId: null,
+  simulatedRouteTimerId: null,
+  simulatedRouteStep: 0,
   unsubscribers: []
 };
 
