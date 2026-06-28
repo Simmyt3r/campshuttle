@@ -1,7 +1,7 @@
 import { state } from "./state.js";
 import { escapeHtml, formatTime } from "./ui.js";
 
-export const CAMPUS_CENTER = [8.4939, 8.5014];
+export const CAMPUS_CENTER = [8.478728691562292, 8.554609575012506];
 
 export function initMap(elementId) {
   const map = L.map(elementId, { zoomControl: true }).setView(CAMPUS_CENTER, 15);
