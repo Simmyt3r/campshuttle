@@ -15,7 +15,7 @@ import {
 } from "./firebase.js";
 import { state, rememberUnsubscribe } from "./state.js";
 import { $, escapeHtml, formatTime, renderEmpty, toast } from "./ui.js";
-import { initMap, updateDriverMarker } from "./map.js";
+import { initMap, refreshMapSize, updateDriverMarker } from "./map.js";
 
 const GEO_OPTIONS = {
   enableHighAccuracy: true,
@@ -44,12 +44,12 @@ export function stopLocationWatch() {
 }
 
 const DEMO_ROUTE = [
-  [40.7128, -74.0060],
-  [40.7138, -74.0047],
-  [40.7150, -74.0054],
-  [40.7143, -74.0072],
-  [40.7129, -74.0081],
-  [40.7118, -74.0070]
+  [8.4939, 8.5014],
+  [8.4929, 8.5045],
+  [8.4907, 8.5071],
+  [8.4884, 8.5100],
+  [8.4866, 8.5078],
+  [8.4895, 8.5030]
 ];
 
 function driverShuttleId() {
@@ -59,7 +59,7 @@ function driverShuttleId() {
 async function saveShuttle() {
   const totalSeats = Number.parseInt($("#totalSeats").value, 10);
   const availableSeats = Number.parseInt($("#availableSeats").value, 10);
-  const route = $("#driverRoute").value.trim() || "Campus Loop";
+  const route = $("#driverRoute").value.trim() || "Take-off Site ➔ Permanent Site";
 
   if (availableSeats > totalSeats) {
     toast("Available seats cannot exceed total seats.", "warning");
@@ -82,9 +82,10 @@ async function saveShuttle() {
 }
 
 function listenForDriverShuttle() {
-  const unsubscribe = onSnapshot(doc(db, "shuttles", driverShuttleId()), (snapshot) => {
+  const unsubscribe = onSnapshot(doc(db, "shuttles", driverShuttleId()), { includeMetadataChanges: true }, (snapshot) => {
     state.driverShuttle = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
     renderDriverStatus();
+    refreshMapSize(state.driverMap);
   }, (error) => toast(error.message, "error"));
   rememberUnsubscribe(unsubscribe);
 }
@@ -236,15 +237,24 @@ async function respondToRequest(bookingId, accepted) {
         isVisible: nextSeats > 0,
         updatedAt: serverTimestamp()
       });
-      return "accepted";
+      return { status: "accepted", nextSeats, isVisible: nextSeats > 0 };
     });
+
+    if (outcome?.status === "accepted") {
+      state.driverShuttle = {
+        ...state.driverShuttle,
+        availableSeats: outcome.nextSeats,
+        isVisible: outcome.isVisible
+      };
+      renderDriverStatus();
+    }
 
     if (outcome === "full") {
       toast("No seats are available. The request was declined and the shuttle was hidden.", "warning");
       return;
     }
 
-    toast(outcome === "accepted" ? "Request accepted and one seat reserved." : "Request declined.", outcome === "accepted" ? "success" : "warning");
+    toast(outcome?.status === "accepted" ? "Request accepted and one seat reserved." : "Request declined.", outcome?.status === "accepted" ? "success" : "warning");
   } catch (error) {
     toast(error.message, "warning");
   }

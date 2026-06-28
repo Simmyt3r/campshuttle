@@ -4,6 +4,7 @@ export function showPage(pageName) {
   document.querySelectorAll(".page").forEach((page) => {
     page.classList.toggle("hidden", page.dataset.page !== pageName);
   });
+  window.dispatchEvent(new CustomEvent("page:shown", { detail: { pageName } }));
 }
 
 export function toast(message, type = "default") {

@@ -55,14 +55,14 @@
               <div class="route-card">
                 <span class="status-dot"></span>
                 <div>
-                  <strong>North Campus Loop</strong>
+                  <strong>Take-off Site ➔ Permanent Site</strong>
                   <small>5 seats available • accepting passengers</small>
                 </div>
               </div>
               <div class="route-card muted">
                 <span class="status-dot status-dot--warning"></span>
                 <div>
-                  <strong>Library Express</strong>
+                  <strong>Gandu Junction ➔ Main Campus</strong>
                   <small>Hidden when full or offline</small>
                 </div>
               </div>
@@ -141,7 +141,14 @@
           <div class="dashboard-grid dashboard-grid--driver">
             <section class="card form-card">
               <div class="card__header"><h3>Shuttle setup</h3><span id="driverStatusPill" class="pill">offline</span></div>
-              <label>Route<input id="driverRoute" type="text" placeholder="North Campus Loop" /></label>
+              <label>Route<input id="driverRoute" type="text" list="fulafiaRoutes" placeholder="Take-off Site ➔ Permanent Site" /></label>
+              <datalist id="fulafiaRoutes">
+                <option value="Take-off Site ➔ Permanent Site"></option>
+                <option value="Gandu Junction ➔ Main Campus"></option>
+                <option value="Permanent Site ➔ Take-off Site"></option>
+                <option value="Main Campus ➔ Gandu Junction"></option>
+                <option value="Student Hostels ➔ Lecture Halls"></option>
+              </datalist>
               <label>Total seats<input id="totalSeats" type="number" min="1" max="80" value="14" /></label>
               <label>Available seats<input id="availableSeats" type="number" min="0" max="80" value="14" /></label>
               <button class="btn btn--secondary" id="saveShuttleBtn" type="button">Save shuttle</button>
