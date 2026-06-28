@@ -1,7 +1,7 @@
 import { state } from "./state.js";
 import { escapeHtml, formatTime } from "./ui.js";
 
-const CAMPUS_CENTER = [40.7128, -74.006];
+export const CAMPUS_CENTER = [8.4939, 8.5014];
 
 export function initMap(elementId) {
   const map = L.map(elementId, { zoomControl: true }).setView(CAMPUS_CENTER, 15);
@@ -9,7 +9,7 @@ export function initMap(elementId) {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors"
   }).addTo(map);
-  setTimeout(() => map.invalidateSize(), 150);
+  refreshMapSize(map);
   return map;
 }
 
@@ -59,10 +59,21 @@ export function syncStudentMarkers(shuttles, onSelect) {
 
   const located = shuttles.find((shuttle) => Number.isFinite(shuttle.latitude) && Number.isFinite(shuttle.longitude));
   if (located) state.studentMap.setView([located.latitude, located.longitude], 15);
+  refreshMapSize(state.studentMap);
+}
+
+export function refreshMapSize(map) {
+  if (!map) return;
+  setTimeout(() => map.invalidateSize(), 200);
 }
 
 export function updateDriverMarker(latitude, longitude) {
-  if (!state.driverMap || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+  if (!state.driverMap) return;
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    refreshMapSize(state.driverMap);
+    return;
+  }
   const latLng = [latitude, longitude];
   if (state.driverMarker) {
     state.driverMarker.setLatLng(latLng);
@@ -70,6 +81,7 @@ export function updateDriverMarker(latitude, longitude) {
     state.driverMarker = L.marker(latLng, { icon: shuttleIcon("D") }).addTo(state.driverMap);
   }
   state.driverMap.setView(latLng, 16);
+  refreshMapSize(state.driverMap);
 }
 
 export function locateUser(map, label = "You are here") {
@@ -81,5 +93,6 @@ export function locateUser(map, label = "You are here") {
       .bindPopup(label)
       .openPopup();
     map.setView(latLng, 16);
-  });
+    refreshMapSize(map);
+  }, () => refreshMapSize(map));
 }

@@ -4,6 +4,7 @@ import { initAuth } from "./auth.js";
 import { initStudentUi } from "./student.js";
 import { initDriverUi } from "./driver.js";
 import { $, showPage, toast } from "./ui.js";
+import { refreshMapSize } from "./map.js";
 
 const publicRoutes = new Set(["home", "auth", "live-map"]);
 
@@ -40,8 +41,12 @@ function monitorNetwork() {
 
 function prepareDashboardsOnResize() {
   window.addEventListener("resize", () => {
-    state.studentMap?.invalidateSize();
-    state.driverMap?.invalidateSize();
+    refreshMapSize(state.studentMap);
+    refreshMapSize(state.driverMap);
+  });
+  window.addEventListener("page:shown", () => {
+    refreshMapSize(state.studentMap);
+    refreshMapSize(state.driverMap);
   });
 }
 
